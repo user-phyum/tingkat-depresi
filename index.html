@@ -85,10 +85,10 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <button onclick="openSheetModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition shadow-sm">
-                    <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i>
-                    <span id="headerSheetStatusText">Integrasi Sheet</span>
-                </button>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
+                    <i class="fa-solid fa-cloud-check text-emerald-600 text-sm"></i>
+                    <span>S-ATDL Cloud Sync</span>
+                </span>
                 <span class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
                     Penelitian SMA 2026
@@ -326,11 +326,8 @@
                     <button onclick="downloadDocReport()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-blue-600/20 flex items-center gap-1.5 transition">
                         <i class="fa-solid fa-file-word text-sm"></i> Download Word (.doc)
                     </button>
-                    <button id="btnSendSheet" onclick="sendDataToGoogleSheet()" class="px-5 py-2bg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-emerald-600/20 flex items-center gap-2 transition">
+                    <button id="btnSendSheet" onclick="sendDataToGoogleSheet()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-emerald-600/20 flex items-center gap-2 transition">
                         <i class="fa-solid fa-cloud-arrow-up text-sm"></i> Kirim Hasil ke Google Sheet & Drive
-                    </button>
-                    <button onclick="openSheetModal()" title="Pengaturan Integrasi Sheet" class="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-xs transition flex items-center justify-center">
-                        <i class="fa-solid fa-gear"></i>
                     </button>
                 </div>
             </div>
@@ -1144,10 +1141,11 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Google Apps Script Webhook Functions
+        // Google Apps Script Webhook Integration
         // =========================================================================
-        // URL Web App Google Apps Script Utama (Bisa ditanam langsung di bawah)
-        // Jika diisi, seluruh pengguna di semua perangkat akan otomatis terhubung!
+        // TANAMKAN URL WEB APP GOOGLE APPS SCRIPT DI SINI
+        // Tempelkan URL Aplikasi Web Google Apps Script Anda pada variabel di bawah:
+        // Contoh: const HARDCODED_GAS_WEBHOOK_URL = "https://script.google.com/macros/s/.../exec";
         // =========================================================================
         const HARDCODED_GAS_WEBHOOK_URL = ""; 
 
@@ -1155,83 +1153,32 @@
             return HARDCODED_GAS_WEBHOOK_URL.trim() || localStorage.getItem('satdl_gas_webhook_url') || '';
         }
 
-        function updateSheetStatusUI() {
-            const url = getSheetWebhookUrl();
-            const headerStatus = document.getElementById('headerSheetStatusText');
-            const savedNotice = document.getElementById('savedUrlNotice');
-            const inputField = document.getElementById('gasWebhookUrlInput');
-
-            if (inputField && url) {
-                inputField.value = url;
-            }
-
-            if (url) {
-                if (headerStatus) headerStatus.innerText = 'Sheet Terhubung';
-                const isHardcoded = !!HARDCODED_GAS_WEBHOOK_URL.trim();
-                if (savedNotice) {
-                    savedNotice.innerHTML = isHardcoded 
-                        ? '<span class="text-emerald-600 font-medium">✓ Terhubung via Kode Utama (Multi-Perangkat): ' + url.substring(0, 35) + '...</span>'
-                        : '<span class="text-emerald-600 font-medium">✓ Terhubung via Browser Storage: ' + url.substring(0, 35) + '...</span>';
-                }
-            } else {
-                if (headerStatus) headerStatus.innerText = 'Integrasi Sheet';
-                if (savedNotice) savedNotice.innerHTML = '<span class="text-amber-600 font-medium">⚠ Belum Dikonfigurasi (Klik Panduan)</span>';
-            }
-        }
-
-        function openSheetModal() {
-            updateSheetStatusUI();
-            const modal = document.getElementById('sheetModal');
-            if (modal) modal.classList.remove('hidden');
-        }
-
-        function closeSheetModal() {
-            const modal = document.getElementById('sheetModal');
-            if (modal) modal.classList.add('hidden');
-        }
-
-        function saveSheetWebhookUrl() {
-            const input = document.getElementById('gasWebhookUrlInput');
-            const val = input ? input.value.trim() : '';
-            if (!val) {
-                alert('Silakan masukkan URL Web App Google Apps Script.');
-                return;
-            }
-            if (!val.includes('script.google.com')) {
-                alert('URL harus berawalan https://script.google.com/macros/s/...');
-                return;
-            }
-            localStorage.setItem('satdl_gas_webhook_url', val);
-            updateSheetStatusUI();
-            alert('URL Webhook Google Sheet & Drive berhasil disimpan!');
-        }
-
-        function copyGasScriptCode() {
-            const codeElem = document.getElementById('gasScriptCode');
-            if (!codeElem) return;
-            const codeText = codeElem.innerText;
-            navigator.clipboard.writeText(codeText).then(() => {
-                const btnText = document.getElementById('copyBtnText');
-                if (btnText) btnText.innerText = 'Kode Tersalin!';
-                setTimeout(() => {
-                    if (btnText) btnText.innerText = 'Salin Kode Script';
-                }, 2000);
-            }).catch(err => {
-                console.error('Gagal menyalin:', err);
-            });
-        }
-
         async function sendDataToGoogleSheet() {
             const webhookUrl = getSheetWebhookUrl();
-            if (!webhookUrl) {
-                alert('URL Webhook Google Sheet belum dikonfigurasi. Silakan atur URL terlebih dahulu.');
-                openSheetModal();
-                return;
-            }
-
             const btn = document.getElementById('btnSendSheet');
             const banner = document.getElementById('sheetStatusBanner');
             const originalBtnHtml = btn ? btn.innerHTML : '';
+
+            if (!webhookUrl) {
+                if (banner) {
+                    banner.classList.remove('hidden');
+                    banner.innerHTML = `
+                        <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-3 shadow-sm">
+                            <div class="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 font-bold text-sm">
+                                <i class="fa-solid fa-circle-info"></i>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="font-bold text-amber-950 text-sm">Konfigurasi URL Google Apps Script Belum Terisi</div>
+                                <p class="text-slate-700 leading-relaxed">
+                                    Silakan isi URL Web App Google Apps Script Anda pada variabel <code>HARDCODED_GAS_WEBHOOK_URL</code> di dalam file <code>index.html</code> (baris ~1148). Setelah diisi, data responden akan otomatis terkirim ke Google Sheet & Drive.
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                }
+                alert('⚠️ URL Google Apps Script belum ditanamkan pada kode index.html. Silakan isi variabel HARDCODED_GAS_WEBHOOK_URL.');
+                return;
+            }
 
             if (btn) {
                 btn.disabled = true;
@@ -1314,150 +1261,6 @@
                 }
             }
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            updateSheetStatusUI();
-        });
     </script>
-
-    <!-- Modal Integrasi Google Sheet & Google Drive -->
-    <div id="sheetModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-6">
-            <div class="flex items-center justify-between border-b border-slate-200 pb-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl font-bold">
-                        <i class="fa-solid fa-file-excel"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-slate-900 text-base sm:text-lg">Integrasi Google Sheet & Drive</h3>
-                        <p class="text-xs text-slate-500">Penyimpanan Otomatis Hasil Responden & File Rekap .doc</p>
-                    </div>
-                </div>
-                <button onclick="closeSheetModal()" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <!-- Informational Banner -->
-            <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 space-y-1.5">
-                <div class="font-bold flex items-center gap-2 text-emerald-900">
-                    <i class="fa-solid fa-shield-check text-sm"></i> Berjalan Tanpa Kendala Akses Responden!
-                </div>
-                <p class="leading-relaxed">
-                    Dengan memasang skrip <strong>Google Apps Script Web App</strong> di Spreadsheet Anda, <strong>ratusan atau ribuan responden tidak perlu login atau meminta izin Google Drive</strong>. Skrip akan otomatis menyimpan data di sheet <code>REKAM</code> (A-G) dan membuat file laporan <code>.doc</code> di folder Google Drive Anda.
-                </p>
-            </div>
-
-            <!-- Configuration Form -->
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-800 uppercase mb-1">
-                        URL Web App Google Apps Script <span class="text-rose-500">*</span>
-                    </label>
-                    <div class="flex gap-2">
-                        <input type="url" id="gasWebhookUrlInput" placeholder="https://script.google.com/macros/s/.../exec" class="flex-grow px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition font-mono">
-                        <button onclick="saveSheetWebhookUrl()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-emerald-600/20 shrink-0 transition">
-                            Simpan URL
-                        </button>
-                    </div>
-                    <p class="text-[11px] text-slate-400 mt-1" id="savedUrlNotice">Status: Belum Dikonfigurasi</p>
-                    <p class="text-[11px] text-slate-500 mt-1">
-                        <i class="fa-solid fa-circle-info text-brand-600"></i> <strong>Tips Multi-Perangkat:</strong> Anda juga bisa menanamkan URL langsung pada variabel <code>HARDCODED_GAS_WEBHOOK_URL</code> di file <code>index.html</code> (baris ~1152) agar seluruh responden di semua perangkat langsung terhubung secara otomatis.
-                    </p>
-                </div>
-
-                <!-- Tutorial Steps -->
-                <div class="border-t border-slate-200 pt-4 space-y-3">
-                    <h4 class="font-bold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                        <i class="fa-solid fa-list-check text-emerald-600"></i> Panduan Pemasangan (Sekali Atur):
-                    </h4>
-                    
-                    <ol class="list-decimal list-inside text-xs text-slate-700 space-y-2 leading-relaxed">
-                        <li>Buka Google Sheet Anda (<a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vRdUsGJu2c6aSoTdglKQWogg9XcCvnwm5640hudtQC8GxaaX6WiqzBRe8sqoa3gPWPW4-NsKtIPxngL/pub?output=csv" target="_blank" class="text-brand-600 underline font-semibold">Sheet REKAM</a>).</li>
-                        <li>Klik menu <strong>Ekstensi &gt; Apps Script</strong> pada menu atas Spreadsheet.</li>
-                        <li>Hapus seluruh kode yang ada, lalu salin &amp; tempel kode skrip di bawah ini:</li>
-                    </ol>
-
-                    <!-- Code Snippet Box -->
-                    <div class="relative bg-slate-900 text-slate-100 p-4 rounded-xl text-xs font-mono overflow-x-auto space-y-2 border border-slate-800 max-h-56">
-                        <button onclick="copyGasScriptCode()" class="absolute top-2 right-2 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-semibold rounded-lg text-[11px] border border-slate-700 flex items-center gap-1.5 transition">
-                            <i class="fa-solid fa-copy"></i> <span id="copyBtnText">Salin Kode Script</span>
-                        </button>
-                        <pre id="gasScriptCode" class="text-[11px] text-slate-300 leading-snug">function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    
-    // 1. Dapatkan atau buat Sheet 'REKAM'
-    var sheet = ss.getSheetByName("REKAM");
-    if (!sheet) {
-      sheet = ss.insertSheet("REKAM");
-      sheet.appendRow(["Nama", "Kelas", "Tahun Lahir", "Jenis Kelamin", "Skor Depresi (Kesejahteraan)", "Skor Depresi (Beban Stres)", "File Rekap"]);
-      sheet.getRange("A1:G1").setFontWeight("bold").setBackground("#e2e8f0");
-    }
-
-    // 2. Dapatkan atau buat Folder Google Drive penampung file .doc
-    var folderName = "S-ATDL Laporan Responden";
-    var folders = DriveApp.getFoldersByName(folderName);
-    var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
-
-    // 3. Buat File .doc (Microsoft Word) di Google Drive
-    var timestamp = Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd_HH-mm");
-    var fileName = "S-ATDL_Laporan_" + (data.nama || "Siswa").replace(/\s+/g, "_") + "_" + timestamp + ".doc";
-    
-    var docContent = data.docHtml || ("&lt;html&gt;&lt;body&gt;&lt;h2&gt;Laporan S-ATDL - " + data.nama + "&lt;/h2&gt;&lt;/body&gt;&lt;/html&gt;");
-    var blob = Utilities.newBlob(String.fromCharCode(0xFEFF) + docContent, "application/msword", fileName);
-    var file = folder.createFile(blob);
-    
-    // Set izin file agar dapat dibuka lewat link oleh siapapun
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    var fileUrl = file.getUrl();
-
-    // 4. Tambahkan Baris Data di Sheet REKAM (Kolom A s/d G)
-    sheet.appendRow([
-      data.nama || "-",
-      data.kelas || "-",
-      data.tahunLahir || "-",
-      data.jenisKelamin || "-",
-      data.skorKesejahteraan || "0%",
-      (data.skorBebanStres || "0%") + " (" + (data.kategori || "-") + ")",
-      fileUrl
-    ]);
-
-    return ContentService.createTextOutput(JSON.stringify({
-      status: "success",
-      message: "Data & file rekap .doc berhasil tersimpan!",
-      fileUrl: fileUrl
-    })).setMimeType(ContentService.MimeType.JSON);
-
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({
-      status: "error",
-      message: err.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function doGet(e) {
-  return ContentService.createTextOutput("S-ATDL Webhook Active!").setMimeType(ContentService.MimeType.TEXT);
-}</pre>
-                    </div>
-
-                    <ol class="list-decimal list-inside text-xs text-slate-700 space-y-2 leading-relaxed" start="4">
-                        <li>Klik tombol <strong>Terapkan (Deploy) &gt; Terapkan sebagai aplikasi web (New deployment &gt; Web app)</strong>.</li>
-                        <li>Atur <strong>Jalankan sebagai (Execute as)</strong>: <code>Saya (Me)</code>.</li>
-                        <li>Atur <strong>Siapa yang memiliki akses (Who has access)</strong>: <code>Siapa saja (Anyone)</code>.</li>
-                        <li>Klik <strong>Terapkan (Deploy)</strong>, salin <strong>URL Aplikasi Web</strong> lalu tempelkan pada kolom URL di atas!</li>
-                    </ol>
-                </div>
-            </div>
-
-            <div class="flex justify-end border-t border-slate-200 pt-4">
-                <button onclick="closeSheetModal()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition">
-                    Tutup
-                </button>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
