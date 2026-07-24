@@ -466,6 +466,69 @@
                     </div>
                 </div>
 
+                <!-- Detail Rekapitulasi Jawaban Responden (Table 25 Soal & 4 Pertanyaan Terbuka) -->
+                <div class="glass-card p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6 pdf-block bg-white">
+                    <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                                <i class="fa-solid fa-list-check"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900">Rekapitulasi Detail Jawaban Responden</h3>
+                                <p class="text-xs text-slate-500">Rincian pilihan jawaban 25 instrumen soal berskala (Likert 1-5) dan 4 pertanyaan refleksi kualitatif</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200">
+                            29 Item Tercatat
+                        </span>
+                    </div>
+
+                    <!-- 25 Likert Questions Table -->
+                    <div class="space-y-3">
+                        <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-table-list text-brand-600"></i>
+                            A. Rekapitulasi 25 Soal Berskala (Likert 1–5)
+                        </h4>
+                        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                                    <tr>
+                                        <th class="p-2.5 text-center w-12 border-r border-slate-200">No</th>
+                                        <th class="p-2.5 w-36 sm:w-44 border-r border-slate-200">Domain</th>
+                                        <th class="p-2.5 border-r border-slate-200">Pernyataan / Soal</th>
+                                        <th class="p-2.5 text-center w-36 sm:w-44">Jawaban Responden</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="likertAnswersTableBody" class="divide-y divide-slate-200">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 4 Open Questions Table -->
+                    <div class="space-y-3 pt-2">
+                        <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-align-left text-indigo-600"></i>
+                            B. Rekapitulasi Pertanyaan Terbuka (Refleksi Kualitatif)
+                        </h4>
+                        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                                    <tr>
+                                        <th class="p-2.5 text-center w-12 border-r border-slate-200">No</th>
+                                        <th class="p-2.5 w-2/5 border-r border-slate-200">Pertanyaan</th>
+                                        <th class="p-2.5">Jawaban Responden</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="openAnswersTableBody" class="divide-y divide-slate-200">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Self-Assessment Test Depression Level (S-ATDL) AI Analysis Output -->
                 <div class="glass-card p-6 sm:p-8 rounded-2xl shadow-md border border-brand-200 bg-gradient-to-b from-white via-blue-50/20 to-white space-y-6">
                     <div class="flex items-center justify-between border-b border-slate-200 pb-4 pdf-block">
@@ -555,6 +618,7 @@
 
         let radarChartInstance = null;
         let barChartInstance = null;
+        let lastSubmissionData = { rawScores: {}, openAnswers: {} };
 
         // Render Questions on DOM Load
         window.onload = function() {
@@ -658,6 +722,12 @@
             const distressPercentage = Math.round(((rawDistressSum - 9) / (45 - 9)) * 100);
             const protectivePercentage = 100 - distressPercentage;
 
+            // Store Submission Data Globally
+            lastSubmissionData = {
+                rawScores: rawScores,
+                openAnswers: { openQ1, openQ2, openQ3, openQ4 }
+            };
+
             // UI Transition to Loading
             document.getElementById('questionnaireContainer').classList.add('hidden');
             document.getElementById('loadingContainer').classList.remove('hidden');
@@ -717,8 +787,72 @@
             // Render Charts
             renderCharts(domainAverages);
 
+            // Populate Detailed Responses Table
+            populateDetailedResponsesUI(rawScores, { openQ1, openQ2, openQ3, openQ4 });
+
             // Render AI Output HTML
             document.getElementById('aiAnalysisBody').innerHTML = aiResultText;
+        }
+
+        function populateDetailedResponsesUI(rawScores, openAnswers) {
+            const domainNameMap = {
+                sectionA: "Kondisi Emosi",
+                sectionB: "Stres Akademik",
+                sectionC: "Hubungan Sosial",
+                sectionD: "Kepercayaan Diri",
+                sectionE: "Pola Hidup & Kesejahteraan"
+            };
+            const likertScaleText = {
+                1: "1 (Tidak Pernah)",
+                2: "2 (Jarang)",
+                3: "3 (Kadang-kadang)",
+                4: "4 (Sering)",
+                5: "5 (Selalu)"
+            };
+
+            // 1. Likert Answers Table Body
+            let likertHtml = '';
+            for (const secKey of ['sectionA', 'sectionB', 'sectionC', 'sectionD', 'sectionE']) {
+                const domainName = domainNameMap[secKey];
+                questions[secKey].forEach(q => {
+                    const val = rawScores[q.id] || '-';
+                    const valText = likertScaleText[val] || val;
+                    likertHtml += `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-2.5 text-center font-bold text-slate-500 border-r border-slate-200">${q.id}</td>
+                            <td class="p-2.5 font-medium text-slate-700 border-r border-slate-200">${domainName}</td>
+                            <td class="p-2.5 text-slate-800 border-r border-slate-200">${q.text}</td>
+                            <td class="p-2.5 text-center font-bold text-brand-700 bg-brand-50/50">${valText}</td>
+                        </tr>
+                    `;
+                });
+            }
+            const likertBody = document.getElementById('likertAnswersTableBody');
+            if (likertBody) likertBody.innerHTML = likertHtml;
+
+            // 2. Open Questions Table Body
+            const openQuestionsList = [
+                { num: 1, title: "Faktor Utama Stres", text: "Apa yang paling sering membuat Anda merasa stres?", ans: openAnswers.openQ1 || '-' },
+                { num: 2, title: "Teman Berbagi / Curhat", text: "Siapa yang biasanya Anda ajak berbicara ketika menghadapi masalah?", ans: openAnswers.openQ2 || '-' },
+                { num: 3, title: "Masukan untuk Sekolah", text: "Menurut Anda, apa yang dapat dilakukan sekolah untuk mendukung kesehatan mental siswa?", ans: openAnswers.openQ3 || '-' },
+                { num: 4, title: "Harapan Siswa", text: "Apa harapan Anda agar kesehatan mental siswa di sekolah menjadi lebih baik?", ans: openAnswers.openQ4 || '-' }
+            ];
+
+            let openHtml = '';
+            openQuestionsList.forEach(item => {
+                openHtml += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-2.5 text-center font-bold text-slate-500 border-r border-slate-200">${item.num}</td>
+                        <td class="p-2.5 text-slate-800 font-medium border-r border-slate-200">
+                            <span class="font-bold text-indigo-700 block text-[11px] uppercase">${item.title}</span>
+                            ${item.text}
+                        </td>
+                        <td class="p-2.5 text-slate-700 italic bg-slate-50">"${item.ans}"</td>
+                    </tr>
+                `;
+            });
+            const openBody = document.getElementById('openAnswersTableBody');
+            if (openBody) openBody.innerHTML = openHtml;
         }
 
         function renderCharts(domainAvg) {
@@ -903,6 +1037,60 @@
 
             const aiAnalysisHTML = document.getElementById('aiAnalysisBody') ? document.getElementById('aiAnalysisBody').innerHTML : '';
 
+            // Generate Detailed Tables for Word Doc
+            const domainNameMap = {
+                sectionA: "Kondisi Emosi",
+                sectionB: "Stres Akademik",
+                sectionC: "Hubungan Sosial",
+                sectionD: "Kepercayaan Diri",
+                sectionE: "Pola Hidup & Kesejahteraan"
+            };
+            const likertScaleText = {
+                1: "1 (Tidak Pernah)",
+                2: "2 (Jarang)",
+                3: "3 (Kadang-kadang)",
+                4: "4 (Sering)",
+                5: "5 (Selalu)"
+            };
+
+            let likertRowsDoc = '';
+            if (lastSubmissionData.rawScores) {
+                for (const secKey of ['sectionA', 'sectionB', 'sectionC', 'sectionD', 'sectionE']) {
+                    const domainName = domainNameMap[secKey];
+                    questions[secKey].forEach(q => {
+                        const val = lastSubmissionData.rawScores[q.id] || '-';
+                        const valText = likertScaleText[val] || val;
+                        likertRowsDoc += `
+                            <tr>
+                                <td style="text-align: center; font-weight: bold; width: 6%;">${q.id}</td>
+                                <td style="width: 24%; font-weight: bold; color: #334155;">${domainName}</td>
+                                <td style="width: 48%;">${q.text}</td>
+                                <td style="text-align: center; font-weight: bold; color: #1d4ed8; width: 22%;">${valText}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            }
+
+            let openRowsDoc = '';
+            if (lastSubmissionData.openAnswers) {
+                const openList = [
+                    { num: 1, title: "Faktor Utama Stres", text: "Apa yang paling sering membuat Anda merasa stres?", ans: lastSubmissionData.openAnswers.openQ1 || '-' },
+                    { num: 2, title: "Teman Berbagi / Curhat", text: "Siapa yang biasanya Anda ajak berbicara ketika menghadapi masalah?", ans: lastSubmissionData.openAnswers.openQ2 || '-' },
+                    { num: 3, title: "Masukan untuk Sekolah", text: "Menurut Anda, apa yang dapat dilakukan sekolah untuk mendukung kesehatan mental siswa?", ans: lastSubmissionData.openAnswers.openQ3 || '-' },
+                    { num: 4, title: "Harapan Siswa", text: "Apa harapan Anda agar kesehatan mental siswa di sekolah menjadi lebih baik?", ans: lastSubmissionData.openAnswers.openQ4 || '-' }
+                ];
+                openList.forEach(item => {
+                    openRowsDoc += `
+                        <tr>
+                            <td style="text-align: center; font-weight: bold; width: 6%;">${item.num}</td>
+                            <td style="width: 38%;"><strong>${item.title}:</strong><br/>${item.text}</td>
+                            <td style="width: 56%; background-color: #f8fafc; font-style: italic;">"${item.ans}"</td>
+                        </tr>
+                    `;
+                });
+            }
+
             // Construct Word Document HTML structure with Microsoft Office MSO tags
             return `
                 <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -925,8 +1113,8 @@
                         h2 { color: #0f172a; font-size: 14pt; border-bottom: 2pt solid #2563eb; padding-bottom: 4pt; margin-top: 18pt; margin-bottom: 10pt; font-weight: bold; }
                         h3 { color: #1e40af; font-size: 12pt; margin-top: 12pt; margin-bottom: 6pt; font-weight: bold; }
                         table { width: 100%; border-collapse: collapse; margin-top: 8pt; margin-bottom: 14pt; }
-                        th, td { border: 1pt solid #cbd5e1; padding: 8pt 10pt; font-size: 11pt; text-align: left; vertical-align: top; }
-                        th { background-color: #f1f5f9; font-weight: bold; color: #1e293b; width: 35%; }
+                        th, td { border: 1pt solid #cbd5e1; padding: 8pt 10pt; font-size: 10.5pt; text-align: left; vertical-align: top; }
+                        th { background-color: #f1f5f9; font-weight: bold; color: #1e293b; }
                         .card-box { background-color: #f8fafc; border: 1pt solid #e2e8f0; padding: 12pt; margin-bottom: 12pt; border-radius: 6pt; }
                         .chart-container { text-align: center; margin: 15pt 0; }
                         .chart-img { max-width: 500px; width: 100%; height: auto; margin: 0 auto; display: block; }
@@ -946,10 +1134,10 @@
                     <h2>1. DATA DEMOGRAFI RESPONDEN</h2>
                     <table>
                         <tr>
-                            <th>Nama / Inisial</th>
-                            <td>${respName}</td>
-                            <th>Kelas / Tingkat</th>
-                            <td>${respClass}</td>
+                            <th style="width: 20%;">Nama / Inisial</th>
+                            <td style="width: 30%;">${respName}</td>
+                            <th style="width: 20%;">Kelas / Tingkat</th>
+                            <td style="width: 30%;">${respClass}</td>
                         </tr>
                         <tr>
                             <th>Tahun Lahir</th>
@@ -966,7 +1154,7 @@
                     <h2>2. RINGKASAN SKOR KESEJAHTERAAN & BEBAN STRES</h2>
                     <table>
                         <tr>
-                            <th>Indeks Kesejahteraan Mental (Overall)</th>
+                            <th style="width: 35%;">Indeks Kesejahteraan Mental (Overall)</th>
                             <td><strong style="font-size: 13pt; color: #2563eb;">${overallScore}</strong> &nbsp; (${overallCategory})</td>
                         </tr>
                         <tr>
@@ -989,7 +1177,38 @@
                         ${barImgSrc ? `<img class="chart-img" src="${barImgSrc}" alt="Bar Chart Domain S-ATDL" />` : '<p>[Grafik Batang]</p>'}
                     </div>
 
-                    <h2>4. HASIL ANALISIS MENDALAM S-ATDL (AI ENGINE)</h2>
+                    <h2>4. REKAPITULASI DETAIL JAWABAN RESPONDEN</h2>
+                    
+                    <h3>A. Rekapitulasi 25 Soal Berskala (Likert 1-5)</h3>
+                    <table>
+                        <thead>
+                            <tr style="background-color: #f1f5f9;">
+                                <th style="width: 6%; text-align: center;">No</th>
+                                <th style="width: 24%;">Domain</th>
+                                <th style="width: 48%;">Pernyataan / Soal</th>
+                                <th style="width: 22%; text-align: center;">Jawaban Responden</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${likertRowsDoc}
+                        </tbody>
+                    </table>
+
+                    <h3>B. Rekapitulasi Pertanyaan Terbuka (Refleksi Kualitatif)</h3>
+                    <table>
+                        <thead>
+                            <tr style="background-color: #f1f5f9;">
+                                <th style="width: 6%; text-align: center;">No</th>
+                                <th style="width: 38%;">Pertanyaan</th>
+                                <th style="width: 56%;">Jawaban Responden</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${openRowsDoc}
+                        </tbody>
+                    </table>
+
+                    <h2>5. HASIL ANALISIS MENDALAM S-ATDL (AI ENGINE)</h2>
                     <div class="card-box">
                         ${aiAnalysisHTML}
                     </div>
